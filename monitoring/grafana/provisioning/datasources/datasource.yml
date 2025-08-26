@@ -1,4 +1,5 @@
 apiVersion: 1
+
 datasources:
   - name: Prometheus
     type: prometheus
@@ -6,3 +7,4 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
     editable: false
+

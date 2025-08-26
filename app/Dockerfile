@@ -3,28 +3,34 @@ FROM python:3.11-slim
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# System deps
+# System deps (keep slim)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-# If requirements.txt already pins ray==2.38.0, this is enough:
-RUN pip install --no-cache-dir -r requirements.txt
+# ---- Install deps
+# Make sure THIS requirements.txt is inside your build context (given compose uses context: ./app)
+COPY requirements.txt ./requirements.txt
 
-# OR, if you prefer to force-match regardless of the file, add:
-# RUN pip install --no-cache-dir "ray[default]==2.38.0" "grpcio>=1.58"
+# Upgrade pip toolchain (harmless + helpful)
+RUN python -m pip install --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip check
 
-# Optional: verify at build
+# Build-time sanity checks (fail early if missing)
 RUN python - <<'PY'
-import ray
-print(">> Build-time ray.__version__:", ray.__version__)
+import sys
+print("Python:", sys.version)
+import ray; print("ray:", ray.__version__)
+import prometheus_fastapi_instrumentator as pfi
+print("prometheus-fastapi-instrumentator present")
 PY
 
+# ---- App code last for better caching
 COPY . .
 
 EXPOSE 8000
-# Keep a single worker (good for Ray client init)
 CMD ["uvicorn","main:app","--host","0.0.0.0","--port","8000","--loop","asyncio"]

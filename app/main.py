@@ -10,7 +10,12 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from prometheus_fastapi_instrumentor import Instrumentator
+from prometheus_fastapi_instrumentator import Instrumentator
+
+app = FastAPI()
+
+# simplest: auto-instrument and expose /metrics
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 # IMPORTANT: don't import ray at module import time; import inside helpers/endpoints
 # This avoids client import/side-effects crashing module import on boot.
